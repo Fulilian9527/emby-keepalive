@@ -763,7 +763,6 @@
   </div>
 </div>
 
-<script src="icons.js"></script>
 <script>
 const API = "/api/servers";
 let servers = [];
@@ -1291,13 +1290,12 @@ function setIcon(icon) {
 }
 
 // —— 图标源管理 ——
-// 内置图标（icons.js 里的 window.EMBY_ICONS）
 // 默认 JSON 源（离歌 Emby 专用图标）
 const DEFAULT_ICON_SOURCE = "https://ghfast.top/https://raw.githubusercontent.com/RebornQ/Emby-icon-collection/refs/heads/main/lige47/QuanX-icon-rule/lige-emby-icon.json";
 const SOURCES_KEY = "emby_keepalive_icon_sources";
 
-// 所有图标源：内置 + 默认 JSON + 用户自定义 JSON
-// 每个源结构：{ url, name, icons: [{name,url}], builtin? }
+// 所有图标源：默认 JSON + 用户自定义 JSON
+// 每个源结构：{ url, name, icons: [{name,url}] }
 let iconSources = [];
 
 function getCustomSources() {
@@ -1334,18 +1332,12 @@ async function fetchIconSource(url) {
   return parseIconSource(data, url);
 }
 
-// 初始化图标源（内置 + 默认 JSON + 自定义），并拉取默认 JSON 源
+// 初始化图标源（默认 JSON + 自定义），并拉取默认 JSON 源
 async function initIconSources() {
-  const builtin = {
-    url: null,
-    name: "内置图标",
-    icons: window.EMBY_ICONS || [],
-    builtin: true,
-  };
   const custom = getCustomSources();
-  iconSources = [builtin];
+  iconSources = [];
 
-  // 拉取默认 JSON 源（失败则静默跳过，保留内置图标）
+  // 拉取默认 JSON 源（失败则静默跳过）
   try {
     const def = await fetchIconSource(DEFAULT_ICON_SOURCE);
     iconSources.push(def);
@@ -1367,7 +1359,7 @@ async function initIconSources() {
 function renderIconSources() {
   const box = $("#ip-sources-list");
   const custom = getCustomSources();
-  const items = iconSources.filter((s) => !s.builtin).map((s) => {
+  const items = iconSources.map((s) => {
     const isCustom = custom.some((c) => c.url === s.url);
     return `
       <div class="ip-source-item" data-url="${escapeHtml(s.url || "")}">
@@ -1425,9 +1417,8 @@ async function refreshIconSources() {
   btn.classList.add("loading");
   btn.disabled = true;
   try {
-    const builtin = iconSources.find((s) => s.builtin);
     const custom = getCustomSources();
-    const newSources = [builtin];
+    const newSources = [];
 
     // 拉取默认源
     try {
