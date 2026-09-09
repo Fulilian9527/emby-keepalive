@@ -411,7 +411,53 @@
     padding: 18px 20px 12px;
     border-bottom: 1px solid var(--border);
   }
-  .icon-picker .ip-head h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .icon-picker .ip-head-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .icon-picker .ip-head-top h3 { font-size: 16px; font-weight: 600; }
+  .icon-picker .ip-refresh { padding: 6px 12px; font-size: 13px; }
+  .icon-picker .ip-refresh svg { transition: transform .4s ease; }
+  .icon-picker .ip-refresh.loading svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .icon-picker .ip-sources {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+  .icon-picker .ip-sources-list {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 10px;
+  }
+  .icon-picker .ip-source-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+  }
+  .icon-picker .ip-source-item .src-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--text-dim); font-weight: 500;
+  }
+  .icon-picker .ip-source-item .src-count { color: var(--text-faint); flex-shrink: 0; }
+  .icon-picker .ip-source-item .src-del {
+    flex-shrink: 0; cursor: pointer; color: var(--text-faint);
+    border: none; background: transparent; font-size: 14px; padding: 0 2px;
+  }
+  .icon-picker .ip-source-item .src-del:hover { color: var(--danger); }
+  .icon-picker .ip-add-source { display: flex; gap: 8px; }
+  .icon-picker .ip-add-source input {
+    flex: 1; padding: 9px 12px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-sm);
+    color: var(--text); font-size: 13px;
+    font-family: inherit; min-width: 0;
+  }
+  .icon-picker .ip-add-source input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+  .icon-picker .ip-add-source .btn { padding: 9px 14px; font-size: 13px; flex-shrink: 0; }
   .icon-picker .ip-search {
     width: 100%; padding: 10px 13px;
     background: #fff;
@@ -646,8 +692,21 @@
 <div class="icon-picker-overlay" id="icon-picker-overlay">
   <div class="icon-picker">
     <div class="ip-head">
-      <h3>选择图标</h3>
+      <div class="ip-head-top">
+        <h3>选择图标</h3>
+        <button type="button" class="btn btn-ghost ip-refresh" id="ip-refresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          刷新
+        </button>
+      </div>
       <input type="text" class="ip-search" id="ip-search" placeholder="搜索图标名称...">
+      <div class="ip-sources">
+        <div class="ip-sources-list" id="ip-sources-list"></div>
+        <div class="ip-add-source">
+          <input type="text" id="ip-source-input" placeholder="粘贴 .json 图标链接，导入更多图标...">
+          <button type="button" class="btn btn-ghost" id="ip-source-add">添加</button>
+        </div>
+      </div>
     </div>
     <div class="ip-grid" id="ip-grid"></div>
   </div>
@@ -1196,9 +1255,103 @@ function setIcon(icon) {
   }
 }
 
+// —— 图标源管理 ——
+// 内置图标（icons.js 里的 window.EMBY_ICONS）
+// 默认 JSON 源（离歌 Emby 专用图标）
+const DEFAULT_ICON_SOURCE = "https://raw.githubusercontent.com/lige47/lige_icon/main/lige-emby-icon.json";
+const SOURCES_KEY = "emby_keepalive_icon_sources";
+
+// 所有图标源：内置 + 默认 JSON + 用户自定义 JSON
+// 每个源结构：{ url, name, icons: [{name,url}], builtin? }
+let iconSources = [];
+
+function getCustomSources() {
+  try {
+    const raw = localStorage.getItem(SOURCES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function saveCustomSources(list) {
+  try { localStorage.setItem(SOURCES_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+// 解析 JSON 图标源：支持 {icons:[{name,url}]} 或 [{name,url}] 两种结构
+function parseIconSource(data, url) {
+  let icons = [];
+  let name = "";
+  if (Array.isArray(data)) {
+    icons = data;
+  } else if (data && Array.isArray(data.icons)) {
+    icons = data.icons;
+    name = data.name || "";
+  }
+  icons = icons
+    .filter((i) => i && i.url)
+    .map((i) => ({ name: String(i.name || ""), url: String(i.url) }));
+  return { url, name: name || url, icons };
+}
+
+// 拉取单个 JSON 源
+async function fetchIconSource(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  return parseIconSource(data, url);
+}
+
+// 初始化图标源（内置 + 默认 JSON + 自定义），并拉取默认 JSON 源
+async function initIconSources() {
+  const builtin = {
+    url: null,
+    name: "内置图标",
+    icons: window.EMBY_ICONS || [],
+    builtin: true,
+  };
+  const custom = getCustomSources();
+  iconSources = [builtin, ...custom];
+
+  // 拉取默认 JSON 源（失败则静默跳过，保留内置图标）
+  try {
+    const def = await fetchIconSource(DEFAULT_ICON_SOURCE);
+    iconSources.push(def);
+  } catch (e) {}
+
+  renderIconSources();
+}
+
+// 渲染图标源列表（含删除按钮）
+function renderIconSources() {
+  const box = $("#ip-sources-list");
+  const custom = getCustomSources();
+  const items = iconSources.filter((s) => !s.builtin).map((s) => {
+    const isCustom = custom.some((c) => c.url === s.url);
+    return `
+      <div class="ip-source-item" data-url="${escapeHtml(s.url || "")}">
+        <span class="src-name">${escapeHtml(s.name)}</span>
+        <span class="src-count">${s.icons.length} 个</span>
+        ${isCustom ? `<button class="src-del" data-del-source="${escapeHtml(s.url)}" title="移除">×</button>` : ""}
+      </div>`;
+  }).join("");
+  box.innerHTML = items || `<div class="ip-empty" style="padding:8px">暂无自定义图标源</div>`;
+}
+
+// 合并所有源的图标（去重，按 url）
+function allIcons() {
+  const seen = new Set();
+  const out = [];
+  for (const src of iconSources) {
+    for (const icon of src.icons) {
+      if (!icon.url || seen.has(icon.url)) continue;
+      seen.add(icon.url);
+      out.push(icon);
+    }
+  }
+  return out;
+}
+
 function renderIconPicker(filter) {
   const gridEl = $("#ip-grid");
-  const icons = window.EMBY_ICONS || [];
+  const icons = allIcons();
   const kw = (filter || "").trim().toLowerCase();
   const list = kw ? icons.filter((i) => i.name.toLowerCase().includes(kw)) : icons;
   if (list.length === 0) {
@@ -1217,8 +1370,86 @@ function renderIconPicker(filter) {
 
 function openIconPicker() {
   renderIconPicker("");
+  renderIconSources();
   $("#ip-search").value = "";
   $("#icon-picker-overlay").classList.add("open");
+}
+
+// 刷新：重新拉取默认 JSON 源 + 所有自定义源
+async function refreshIconSources() {
+  const btn = $("#ip-refresh");
+  btn.classList.add("loading");
+  btn.disabled = true;
+  try {
+    const builtin = iconSources.find((s) => s.builtin);
+    const custom = getCustomSources();
+    const newSources = [builtin];
+
+    // 拉取默认源
+    try {
+      const def = await fetchIconSource(DEFAULT_ICON_SOURCE);
+      newSources.push(def);
+    } catch (e) {}
+
+    // 拉取自定义源
+    for (const c of custom) {
+      try {
+        const src = await fetchIconSource(c.url);
+        newSources.push(src);
+      } catch (e) {
+        // 拉取失败保留旧数据
+        const old = iconSources.find((s) => s.url === c.url);
+        if (old) newSources.push(old);
+      }
+    }
+
+    iconSources = newSources;
+    renderIconSources();
+    renderIconPicker($("#ip-search").value);
+    showToast("图标已刷新");
+  } catch (e) {
+    showToast("刷新失败，请检查网络");
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
+
+// 添加自定义 JSON 源
+async function addIconSource() {
+  const input = $("#ip-source-input");
+  const url = input.value.trim();
+  if (!url) { showToast("请粘贴 .json 链接"); return; }
+  if (!/^https?:\/\//i.test(url)) { showToast("请输入有效的 http(s) 链接"); return; }
+
+  const custom = getCustomSources();
+  if (custom.some((c) => c.url === url)) { showToast("该图标源已存在"); return; }
+  if (url === DEFAULT_ICON_SOURCE) { showToast("该图标源已存在（默认源）"); return; }
+
+  try {
+    const src = await fetchIconSource(url);
+    if (src.icons.length === 0) { showToast("未解析到图标，请检查 JSON 格式"); return; }
+    custom.push({ url, name: src.name });
+    saveCustomSources(custom);
+    iconSources.push(src);
+    input.value = "";
+    renderIconSources();
+    renderIconPicker($("#ip-search").value);
+    showToast(`已导入 ${src.icons.length} 个图标`);
+  } catch (e) {
+    showToast("拉取失败，请检查链接是否可访问");
+  }
+}
+
+// 移除自定义 JSON 源
+function removeIconSource(url) {
+  let custom = getCustomSources();
+  custom = custom.filter((c) => c.url !== url);
+  saveCustomSources(custom);
+  iconSources = iconSources.filter((s) => s.url !== url);
+  renderIconSources();
+  renderIconPicker($("#ip-search").value);
+  showToast("已移除图标源");
 }
 
 // 事件绑定
@@ -1422,6 +1653,15 @@ $("#ip-grid").addEventListener("click", (e) => {
   setIcon(icon);
   $("#icon-picker-overlay").classList.remove("open");
 });
+$("#ip-refresh").addEventListener("click", refreshIconSources);
+$("#ip-source-add").addEventListener("click", addIconSource);
+$("#ip-source-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); addIconSource(); }
+});
+$("#ip-sources-list").addEventListener("click", (e) => {
+  const delBtn = e.target.closest("[data-del-source]");
+  if (delBtn) removeIconSource(delBtn.dataset.delSource);
+});
 
 // 确认弹窗事件
 $("#confirm-cancel").addEventListener("click", () => {
@@ -1517,6 +1757,7 @@ grid.addEventListener("click", (e) => {
 });
 
 load();
+initIconSources();
 
 // 注册 Service Worker（PWA 离线缓存）
 if ("serviceWorker" in navigator) {
