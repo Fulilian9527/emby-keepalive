@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS servers (
   backup_lines TEXT,                  -- 备用线路 JSON 数组: ["https://...","https://..."]
   username TEXT,                      -- 用户名
   password TEXT,                      -- 密码
+  security_password TEXT,             -- 安全密码
+  max_streams INTEGER,                -- 同时播放数
+  recommended_node TEXT,              -- 推荐播放节点
   server_type TEXT NOT NULL DEFAULT 'emby',  -- webdav/smb/ftp/emby/jelly
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

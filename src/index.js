@@ -35,7 +35,7 @@ function error(msg, status = 400) {
 
 // 校验保号方式字段
 function validate(body) {
-  const { name, keep_mode, watch_days, both_days, expiry_date, server_type } = body;
+  const { name, keep_mode, watch_days, both_days, expiry_date, server_type, max_streams } = body;
   if (!name || !String(name).trim()) return "服务器名称不能为空";
   if (!["watch", "checkin", "both", "none", "white", "expiry"].includes(keep_mode))
     return "保号方式无效";
@@ -43,6 +43,11 @@ function validate(body) {
   if (server_type != null && server_type !== "") {
     if (!["webdav", "smb", "ftp", "emby", "jelly"].includes(server_type))
       return "服务器类型无效";
+  }
+
+  if (max_streams != null && max_streams !== "") {
+    const n = Number(max_streams);
+    if (!Number.isInteger(n) || n < 0) return "同时播放数需填写有效的数字";
   }
 
   if (keep_mode === "watch") {
@@ -149,10 +154,10 @@ async function handleApi(request, env, url) {
     const err = validate(body);
     if (err) return error(err);
 
-    const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type } = body;
+    const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type } = body;
     const info = await env.DB.prepare(
-      `INSERT INTO servers (name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO servers (name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         name.trim(),
@@ -165,6 +170,9 @@ async function handleApi(request, env, url) {
         serializeBackupLines(backup_lines),
         optStr(username),
         optStr(password),
+        optStr(security_password),
+        max_streams != null && max_streams !== "" ? Number(max_streams) : null,
+        optStr(recommended_node),
         normType(server_type)
       )
       .run();
@@ -189,11 +197,11 @@ async function handleApi(request, env, url) {
       const err = validate(body);
       if (err) return error(err);
 
-      const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type } = body;
+      const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type } = body;
       const info = await env.DB.prepare(
         `UPDATE servers SET
            name = ?, keep_mode = ?, watch_days = ?, both_days = ?, expiry_date = ?, icon = ?,
-           line = ?, backup_lines = ?, username = ?, password = ?, server_type = ?,
+           line = ?, backup_lines = ?, username = ?, password = ?, security_password = ?, max_streams = ?, recommended_node = ?, server_type = ?,
            updated_at = datetime('now')
          WHERE id = ?`
       )
@@ -208,6 +216,9 @@ async function handleApi(request, env, url) {
           serializeBackupLines(backup_lines),
           optStr(username),
           optStr(password),
+          optStr(security_password),
+          max_streams != null && max_streams !== "" ? Number(max_streams) : null,
+          optStr(recommended_node),
           normType(server_type),
           id
         )

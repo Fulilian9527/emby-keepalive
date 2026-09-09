@@ -650,6 +650,21 @@
       </div>
 
       <div class="field">
+        <label>安全密码</label>
+        <input type="text" id="f-security-password" placeholder="安全密码">
+      </div>
+
+      <div class="field">
+        <label>同时播放数</label>
+        <input type="number" id="f-max-streams" min="0" placeholder="例如：3">
+      </div>
+
+      <div class="field">
+        <label>推荐播放节点</label>
+        <input type="text" id="f-recommended-node" placeholder="例如：https://node.example.com">
+      </div>
+
+      <div class="field">
         <label>服务器类型</label>
         <div class="seg" id="seg-type">
           <div class="seg-opt" data-type="emby">Emby</div>
@@ -1055,6 +1070,18 @@ function credRow(label, value) {
     </div>`;
 }
 
+// 普通行（非敏感信息，直接显示，可复制）
+function plainRow(label, value) {
+  const has = value != null && String(value).trim() !== "";
+  const val = has ? String(value) : "—";
+  return `
+    <div class="card-row" data-row="${label}">
+      <span class="row-label">${label}</span>
+      <span class="row-val" data-val="${escapeHtml(val)}">${escapeHtml(val)}</span>
+      ${has ? `<button class="row-copy" data-copy="${label}" title="复制">复制</button>` : ""}
+    </div>`;
+}
+
 function render() {
   const q = searchQuery.trim().toLowerCase();
   const filtered = q ? servers.filter((s) => (s.name || "").toLowerCase().includes(q)) : servers;
@@ -1096,6 +1123,9 @@ function render() {
         ${backupRows}
         ${credRow("用户名", s.username)}
         ${credRow("密码", s.password)}
+        ${credRow("安全密码", s.security_password)}
+        ${plainRow("同时播放数", s.max_streams)}
+        ${plainRow("推荐播放节点", s.recommended_node)}
         <a class="card-senplayer" href="${escapeHtml(senplayerUrl(s))}" title="在 Senplayer 中打开">
           ${SENPLAYER_ICON_SVG}
           <span>Senplayer</span>
@@ -1149,6 +1179,9 @@ function openModal(server) {
     $("#f-line").value = server.line ?? "";
     $("#f-username").value = server.username ?? "";
     $("#f-password").value = server.password ?? "";
+    $("#f-security-password").value = server.security_password ?? "";
+    $("#f-max-streams").value = server.max_streams ?? "";
+    $("#f-recommended-node").value = server.recommended_node ?? "";
   } else {
     $("#f-watch").value = "";
     $("#f-both").value = "";
@@ -1156,6 +1189,9 @@ function openModal(server) {
     $("#f-line").value = "";
     $("#f-username").value = "";
     $("#f-password").value = "";
+    $("#f-security-password").value = "";
+    $("#f-max-streams").value = "";
+    $("#f-recommended-node").value = "";
   }
   setIcon(server && server.icon ? server.icon : null);
   overlay.classList.add("open");
@@ -1219,6 +1255,17 @@ async function save(e) {
   const name = $("#f-name").value.trim();
   if (!name) { showToast("请填写服务器名称"); return; }
 
+  const securityPassword = $("#f-security-password").value.trim();
+  if (!securityPassword) { showToast("请填写安全密码"); return; }
+
+  const maxStreamsRaw = $("#f-max-streams").value.trim();
+  if (!maxStreamsRaw) { showToast("请填写同时播放数"); return; }
+  const maxStreams = Number(maxStreamsRaw);
+  if (!Number.isInteger(maxStreams) || maxStreams < 0) { showToast("同时播放数需填写有效的数字"); return; }
+
+  const recommendedNode = $("#f-recommended-node").value.trim();
+  if (!recommendedNode) { showToast("请填写推荐播放节点"); return; }
+
   const payload = {
     name,
     keep_mode: currentMode,
@@ -1227,6 +1274,9 @@ async function save(e) {
     backup_lines: collectBackupLines(),
     username: $("#f-username").value.trim(),
     password: $("#f-password").value.trim(),
+    security_password: securityPassword,
+    max_streams: maxStreams,
+    recommended_node: recommendedNode,
     server_type: currentType,
   };
   if (currentMode === "watch") {
@@ -1527,7 +1577,7 @@ searchClear.addEventListener("click", () => {
 let recognizedData = null; // { line, backup_lines, username, password, keep_mode, days }
 
 function parseServerInfo(text) {
-  const result = { line: "", backup_lines: [], username: "", password: "", keep_mode: "watch", days: 7, warnings: [] };
+  const result = { line: "", backup_lines: [], username: "", password: "", security_password: "", max_streams: "", recommended_node: "", keep_mode: "watch", days: 7, warnings: [] };
   const lines = text.split(/\r?\n/).map((l) => l.trim());
 
   let port = "";
@@ -1538,9 +1588,21 @@ function parseServerInfo(text) {
     let m = line.match(/(?:用户名称|用户名|账号|username)\s*[:：|｜]\s*(.+)/i);
     if (m && !result.username) result.username = m[1].trim();
 
+    // 安全密码（先于密码匹配，避免被「密码」误捕获）
+    m = line.match(/(?:安全密码|安全口令)\s*[:：|｜]\s*(.+)/i);
+    if (m && !result.security_password) result.security_password = m[1].trim();
+
     // 密码（排除安全密码）
     m = line.match(/(?:用户密码|密码|password)\s*[:：|｜]\s*(.+)/i);
     if (m && !result.password) result.password = m[1].trim();
+
+    // 同时播放数
+    m = line.match(/(?:同时播放数|同时播放|并发数|最大播放数|播放数)\s*[:：|｜]\s*(\d+)/i);
+    if (m && !result.max_streams) result.max_streams = m[1];
+
+    // 推荐播放节点
+    m = line.match(/(?:推荐播放节点|推荐节点|推荐线路|播放节点)\s*[:：|｜]\s*(.+)/i);
+    if (m && !result.recommended_node) result.recommended_node = m[1].trim();
 
     // 端口（单独一行「端口：443」的情况）
     m = line.match(/(?:端口|port)\s*[:：|｜]\s*(\d+)/i);
@@ -1647,6 +1709,9 @@ function doRecognize() {
     ${backupRows}
     <div class="rz-row"><span class="rz-label">用户名</span><span class="rz-val ${r.username ? "" : "empty"}">${r.username ? escapeHtml(r.username) : "未识别"}</span></div>
     <div class="rz-row"><span class="rz-label">密码</span><span class="rz-val ${r.password ? "" : "empty"}">${r.password ? escapeHtml(r.password) : "未识别"}</span></div>
+    <div class="rz-row"><span class="rz-label">安全密码</span><span class="rz-val ${r.security_password ? "" : "empty"}">${r.security_password ? escapeHtml(r.security_password) : "未识别"}</span></div>
+    <div class="rz-row"><span class="rz-label">同时播放数</span><span class="rz-val ${r.max_streams ? "" : "empty"}">${r.max_streams ? escapeHtml(r.max_streams) : "未识别"}</span></div>
+    <div class="rz-row"><span class="rz-label">推荐播放节点</span><span class="rz-val ${r.recommended_node ? "" : "empty"}">${r.recommended_node ? escapeHtml(r.recommended_node) : "未识别"}</span></div>
     <div class="rz-row"><span class="rz-label">保号条件</span><span class="rz-val">${modeLabel}${daysText ? " · " + daysText : ""}</span></div>
     ${r.warnings.length ? `<div class="rz-warn">⚠ ${r.warnings.join("；")}</div>` : ""}
   `;
@@ -1660,6 +1725,9 @@ function applyRecognized() {
   $("#f-line").value = r.line;
   $("#f-username").value = r.username;
   $("#f-password").value = r.password;
+  $("#f-security-password").value = r.security_password;
+  $("#f-max-streams").value = r.max_streams;
+  $("#f-recommended-node").value = r.recommended_node;
   setMode(r.keep_mode);
   if (r.keep_mode === "watch") $("#f-watch").value = r.days;
   if (r.keep_mode === "both") $("#f-both").value = r.days;
