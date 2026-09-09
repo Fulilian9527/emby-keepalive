@@ -661,7 +661,7 @@
 
       <div class="field">
         <label>推荐播放节点</label>
-        <input type="text" id="f-recommended-node" placeholder="例如：https://node.example.com">
+        <input type="text" id="f-recommended-node" placeholder="例如：US、JP（国家/地区缩写）">
       </div>
 
       <div class="field">
@@ -1256,12 +1256,13 @@ async function save(e) {
   const securityPassword = $("#f-security-password").value.trim();
 
   const maxStreamsRaw = $("#f-max-streams").value.trim();
-  if (!maxStreamsRaw) { showToast("请填写同时播放数"); return; }
-  const maxStreams = Number(maxStreamsRaw);
-  if (!Number.isInteger(maxStreams) || maxStreams < 0) { showToast("同时播放数需填写有效的数字"); return; }
+  let maxStreams = null;
+  if (maxStreamsRaw) {
+    maxStreams = Number(maxStreamsRaw);
+    if (!Number.isInteger(maxStreams) || maxStreams < 0) { showToast("同时播放数需填写有效的数字"); return; }
+  }
 
   const recommendedNode = $("#f-recommended-node").value.trim();
-  if (!recommendedNode) { showToast("请填写推荐播放节点"); return; }
 
   const payload = {
     name,
@@ -1597,8 +1598,8 @@ function parseServerInfo(text) {
     m = line.match(/(?:同时播放数|同时播放|并发数|最大播放数|播放数)\s*[:：|｜]\s*(\d+)/i);
     if (m && !result.max_streams) result.max_streams = m[1];
 
-    // 推荐播放节点
-    m = line.match(/(?:推荐播放节点|推荐节点|推荐线路|播放节点)\s*[:：|｜]\s*(.+)/i);
+    // 推荐播放节点（国家/地区缩写，如 US、JP）
+    m = line.match(/(?:推荐播放节点|推荐节点|推荐线路|播放节点|推荐地区|推荐区域)\s*[:：|｜]\s*(.+)/i);
     if (m && !result.recommended_node) result.recommended_node = m[1].trim();
 
     // 端口（单独一行「端口：443」的情况）
