@@ -208,23 +208,24 @@
   }
   .row-copy:hover { color: var(--green); border-color: var(--green); }
 
-  .card-senplayer {
+  .card-imports {
     display: flex; align-items: center; gap: 8px;
-    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .card-import {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-soft);
-    color: var(--text-dim);
-    font-size: 13px; font-weight: 500;
     text-decoration: none;
     transition: all .15s ease;
   }
-  .card-senplayer svg { width: 18px; height: 18px; flex-shrink: 0; }
-  .card-senplayer .senplayer-logo { width: 20px; height: 20px; flex-shrink: 0; object-fit: contain; }
-  .card-senplayer:hover {
-    color: var(--blue);
+  .card-import .senplayer-logo { width: 22px; height: 22px; object-fit: contain; }
+  .card-import:hover {
     border-color: var(--blue);
     background: rgba(37, 99, 235, 0.06);
+    transform: translateY(-1px);
   }
 
   .badge {
@@ -1161,26 +1162,13 @@ function render() {
         ${credRow("用户名", s.username)}
         ${credRow("密码", s.password)}
         ${credRow("安全密码", s.security_password)}
-        <a class="card-senplayer" href="${escapeHtml(senplayerUrl(s))}" title="在 Senplayer 中打开">
-          ${SENPLAYER_ICON_SVG}
-          <span>Senplayer</span>
-        </a>
-        <a class="card-senplayer" href="${escapeHtml(eplayerxUrl(s))}" title="在 ePlayerX 中打开">
-          ${EPLAYERX_ICON_SVG}
-          <span>ePlayerX</span>
-        </a>
-        <a class="card-senplayer" href="${escapeHtml(forwardUrl(s))}" title="在 Forward 中打开">
-          ${FORWARD_ICON_SVG}
-          <span>Forward</span>
-        </a>
-        <a class="card-senplayer" href="${escapeHtml(hillsUrl(s))}" title="在 Hills 中打开">
-          ${HILLS_ICON_SVG}
-          <span>Hills</span>
-        </a>
-        <a class="card-senplayer" href="${escapeHtml(rodelplayerUrl(s))}" title="在小幻中打开">
-          ${RODELPLAYER_ICON_SVG}
-          <span>小幻</span>
-        </a>
+        <div class="card-imports">
+          <a class="card-import" href="${escapeHtml(senplayerUrl(s))}" title="导入 Senplayer">${SENPLAYER_ICON_SVG}</a>
+          <a class="card-import" href="${escapeHtml(eplayerxUrl(s))}" title="导入 ePlayerX">${EPLAYERX_ICON_SVG}</a>
+          <a class="card-import" href="${escapeHtml(forwardUrl(s))}" title="导入 Forward">${FORWARD_ICON_SVG}</a>
+          <a class="card-import" href="${escapeHtml(hillsUrl(s))}" title="导入 Hills">${HILLS_ICON_SVG}</a>
+          <a class="card-import" href="${escapeHtml(rodelplayerUrl(s))}" title="导入小幻">${RODELPLAYER_ICON_SVG}</a>
+        </div>
         <div class="card-actions">
           <button class="btn btn-ghost" data-act="edit">编辑</button>
           <button class="btn btn-danger" data-act="del">删除</button>
