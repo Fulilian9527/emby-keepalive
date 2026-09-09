@@ -4,9 +4,10 @@
 CREATE TABLE IF NOT EXISTS servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,                 -- Emby 服务器名称
-  keep_mode TEXT NOT NULL,            -- watch / checkin / both
+  keep_mode TEXT NOT NULL,            -- watch / checkin / both / none / white / expiry
   watch_days INTEGER,                 -- 观看保号：多少天观看一次
   both_days INTEGER,                  -- 观看+签到：天数
+  expiry_date TEXT,                   -- 到期时间：到期日期 YYYY-MM-DD
   icon TEXT,                          -- 图标 JSON: {"name":"...","url":"..."}
   line TEXT,                          -- 线路（服务器地址/URL）
   backup_lines TEXT,                  -- 备用线路 JSON 数组: ["https://...","https://..."]

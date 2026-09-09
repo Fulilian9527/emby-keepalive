@@ -217,6 +217,9 @@
   .badge-watch { background: rgba(34,197,94,0.12); color: #16a34a; }
   .badge-checkin { background: rgba(245,158,11,0.14); color: #d97706; }
   .badge-both { background: rgba(37,99,235,0.12); color: var(--blue); }
+  .badge-none { background: rgba(107,114,128,0.12); color: #6b7280; }
+  .badge-white { background: rgba(168,85,247,0.12); color: #9333ea; }
+  .badge-expiry { background: rgba(239,68,68,0.12); color: #dc2626; }
 
   .card-actions {
     display: flex; gap: 8px; margin-top: auto;
@@ -663,6 +666,9 @@
           <div class="seg-opt" data-mode="watch">观看保号</div>
           <div class="seg-opt" data-mode="checkin">签到保号</div>
           <div class="seg-opt" data-mode="both">观看+签到</div>
+          <div class="seg-opt" data-mode="none">不用保号</div>
+          <div class="seg-opt" data-mode="white">白</div>
+          <div class="seg-opt" data-mode="expiry">到期时间</div>
         </div>
       </div>
 
@@ -676,6 +682,12 @@
         <label>观看天数</label>
         <input type="number" id="f-both" min="1" placeholder="例如：7">
         <div class="hint">每多少天观看一次保号</div>
+      </div>
+
+      <div class="field cond-extra" id="extra-expiry">
+        <label>到期时间</label>
+        <input type="date" id="f-expiry">
+        <div class="hint">账号到期日期</div>
       </div>
 
       <div class="modal-actions">
@@ -817,6 +829,9 @@ const MODE_META = {
   watch:   { badge: "badge-watch",   label: "观看保号" },
   checkin: { badge: "badge-checkin", label: "签到保号" },
   both:    { badge: "badge-both",    label: "观看+签到" },
+  none:    { badge: "badge-none",    label: "不用保号" },
+  white:   { badge: "badge-white",   label: "白" },
+  expiry:  { badge: "badge-expiry",  label: "到期时间" },
 };
 
 const SENPLAYER_ICON_SVG = `<img src="senplayer.png" alt="Senplayer" class="senplayer-logo">`;
@@ -839,6 +854,12 @@ function condText(s) {
     return `签到保号`;
   if (s.keep_mode === "both")
     return `每 <b>${s.both_days}</b> 天观看一次保号 + 签到`;
+  if (s.keep_mode === "none")
+    return `不用保号`;
+  if (s.keep_mode === "white")
+    return `白名单`;
+  if (s.keep_mode === "expiry")
+    return `到期时间：<b>${s.expiry_date || "未设置"}</b>`;
   return "";
 }
 
@@ -983,6 +1004,12 @@ function condTextPlain(s) {
     return `签到保号`;
   if (s.keep_mode === "both")
     return `每 ${s.both_days} 天观看一次保号 + 签到`;
+  if (s.keep_mode === "none")
+    return `不用保号`;
+  if (s.keep_mode === "white")
+    return `白名单`;
+  if (s.keep_mode === "expiry")
+    return `到期时间：${s.expiry_date || "未设置"}`;
   return "";
 }
 
@@ -1119,12 +1146,14 @@ function openModal(server) {
   if (server) {
     $("#f-watch").value = server.watch_days ?? "";
     $("#f-both").value = server.both_days ?? "";
+    $("#f-expiry").value = server.expiry_date ?? "";
     $("#f-line").value = server.line ?? "";
     $("#f-username").value = server.username ?? "";
     $("#f-password").value = server.password ?? "";
   } else {
     $("#f-watch").value = "";
     $("#f-both").value = "";
+    $("#f-expiry").value = "";
     $("#f-line").value = "";
     $("#f-username").value = "";
     $("#f-password").value = "";
@@ -1146,6 +1175,7 @@ function setMode(mode) {
   });
   $("#extra-watch").classList.toggle("show", mode === "watch");
   $("#extra-both").classList.toggle("show", mode === "both");
+  $("#extra-expiry").classList.toggle("show", mode === "expiry");
 }
 
 function setType(type) {
@@ -1210,6 +1240,11 @@ async function save(e) {
     if (!payload.both_days || payload.both_days <= 0) {
       showToast("请填写有效的天数"); return;
     }
+  } else if (currentMode === "expiry") {
+    payload.expiry_date = $("#f-expiry").value.trim();
+    if (!payload.expiry_date) {
+      showToast("请填写到期时间"); return;
+    }
   }
 
   const url = editingId ? `${API}/${editingId}` : API;
@@ -1258,7 +1293,7 @@ function setIcon(icon) {
 // —— 图标源管理 ——
 // 内置图标（icons.js 里的 window.EMBY_ICONS）
 // 默认 JSON 源（离歌 Emby 专用图标）
-const DEFAULT_ICON_SOURCE = "https://raw.githubusercontent.com/lige47/lige_icon/main/lige-emby-icon.json";
+const DEFAULT_ICON_SOURCE = "https://ghfast.top/https://raw.githubusercontent.com/RebornQ/Emby-icon-collection/refs/heads/main/lige47/QuanX-icon-rule/lige-emby-icon.json";
 const SOURCES_KEY = "emby_keepalive_icon_sources";
 
 // 所有图标源：内置 + 默认 JSON + 用户自定义 JSON
@@ -1308,13 +1343,22 @@ async function initIconSources() {
     builtin: true,
   };
   const custom = getCustomSources();
-  iconSources = [builtin, ...custom];
+  iconSources = [builtin];
 
   // 拉取默认 JSON 源（失败则静默跳过，保留内置图标）
   try {
     const def = await fetchIconSource(DEFAULT_ICON_SOURCE);
     iconSources.push(def);
   } catch (e) {}
+
+  // 拉取自定义源（逐个 fetch，失败跳过）
+  for (const c of custom) {
+    if (!c || !c.url) continue;
+    try {
+      const src = await fetchIconSource(c.url);
+      iconSources.push(src);
+    } catch (e) {}
+  }
 
   renderIconSources();
 }

@@ -35,9 +35,9 @@ function error(msg, status = 400) {
 
 // 校验保号方式字段
 function validate(body) {
-  const { name, keep_mode, watch_days, both_days, server_type } = body;
+  const { name, keep_mode, watch_days, both_days, expiry_date, server_type } = body;
   if (!name || !String(name).trim()) return "服务器名称不能为空";
-  if (!["watch", "checkin", "both"].includes(keep_mode))
+  if (!["watch", "checkin", "both", "none", "white", "expiry"].includes(keep_mode))
     return "保号方式无效";
 
   if (server_type != null && server_type !== "") {
@@ -52,6 +52,10 @@ function validate(body) {
   if (keep_mode === "both") {
     const n = Number(both_days);
     if (!Number.isInteger(n) || n <= 0) return "观看+签到保号需填写有效的天数";
+  }
+  if (keep_mode === "expiry") {
+    if (!expiry_date || !/^\d{4}-\d{2}-\d{2}$/.test(String(expiry_date)))
+      return "到期时间需填写有效的日期";
   }
   return null;
 }
@@ -145,16 +149,17 @@ async function handleApi(request, env, url) {
     const err = validate(body);
     if (err) return error(err);
 
-    const { name, keep_mode, watch_days, both_days, icon, line, backup_lines, username, password, server_type } = body;
+    const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type } = body;
     const info = await env.DB.prepare(
-      `INSERT INTO servers (name, keep_mode, watch_days, both_days, icon, line, backup_lines, username, password, server_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO servers (name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         name.trim(),
         keep_mode,
         watch_days ?? null,
         both_days ?? null,
+        optStr(expiry_date),
         serializeIcon(icon),
         optStr(line),
         serializeBackupLines(backup_lines),
@@ -184,10 +189,10 @@ async function handleApi(request, env, url) {
       const err = validate(body);
       if (err) return error(err);
 
-      const { name, keep_mode, watch_days, both_days, icon, line, backup_lines, username, password, server_type } = body;
+      const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, server_type } = body;
       const info = await env.DB.prepare(
         `UPDATE servers SET
-           name = ?, keep_mode = ?, watch_days = ?, both_days = ?, icon = ?,
+           name = ?, keep_mode = ?, watch_days = ?, both_days = ?, expiry_date = ?, icon = ?,
            line = ?, backup_lines = ?, username = ?, password = ?, server_type = ?,
            updated_at = datetime('now')
          WHERE id = ?`
@@ -197,6 +202,7 @@ async function handleApi(request, env, url) {
           keep_mode,
           watch_days ?? null,
           both_days ?? null,
+          optStr(expiry_date),
           serializeIcon(icon),
           optStr(line),
           serializeBackupLines(backup_lines),
