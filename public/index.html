@@ -1119,12 +1119,12 @@ function render() {
           </div>
         </div>
         <div class="card-cond">${condText(s)}</div>
+        ${streamNodeText(s)}
         ${credRow("线路", s.line)}
         ${backupRows}
         ${credRow("用户名", s.username)}
         ${credRow("密码", s.password)}
         ${credRow("安全密码", s.security_password)}
-        ${streamNodeText(s)}
         <a class="card-senplayer" href="${escapeHtml(senplayerUrl(s))}" title="在 Senplayer 中打开">
           ${SENPLAYER_ICON_SVG}
           <span>Senplayer</span>
