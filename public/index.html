@@ -1047,17 +1047,17 @@ function rodelplayerUrl(s) {
 
 function condTextPlain(s) {
   if (s.keep_mode === "watch")
-    return `每 ${s.watch_days} 天观看一次保号`;
+    return `${s.watch_days}天`;
   if (s.keep_mode === "checkin")
     return `签到保号`;
   if (s.keep_mode === "both")
-    return `每 ${s.both_days} 天观看一次保号 + 签到`;
+    return `${s.both_days}天 + 签到`;
   if (s.keep_mode === "none")
     return `不用保号`;
   if (s.keep_mode === "white")
     return `白名单`;
   if (s.keep_mode === "expiry")
-    return `到期时间：${s.expiry_date || "未设置"}`;
+    return `${s.expiry_date || "未设置"}`;
   return "";
 }
 
