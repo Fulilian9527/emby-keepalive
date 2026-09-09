@@ -154,10 +154,10 @@ async function handleApi(request, env, url) {
     const err = validate(body);
     if (err) return error(err);
 
-    const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type } = body;
+    const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, unavailable, server_type } = body;
     const info = await env.DB.prepare(
-      `INSERT INTO servers (name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO servers (name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, unavailable, server_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         name.trim(),
@@ -173,6 +173,7 @@ async function handleApi(request, env, url) {
         optStr(security_password),
         max_streams != null && max_streams !== "" ? Number(max_streams) : null,
         optStr(recommended_node),
+        optStr(unavailable),
         normType(server_type)
       )
       .run();
@@ -197,11 +198,11 @@ async function handleApi(request, env, url) {
       const err = validate(body);
       if (err) return error(err);
 
-      const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, server_type } = body;
+      const { name, keep_mode, watch_days, both_days, expiry_date, icon, line, backup_lines, username, password, security_password, max_streams, recommended_node, unavailable, server_type } = body;
       const info = await env.DB.prepare(
         `UPDATE servers SET
            name = ?, keep_mode = ?, watch_days = ?, both_days = ?, expiry_date = ?, icon = ?,
-           line = ?, backup_lines = ?, username = ?, password = ?, security_password = ?, max_streams = ?, recommended_node = ?, server_type = ?,
+           line = ?, backup_lines = ?, username = ?, password = ?, security_password = ?, max_streams = ?, recommended_node = ?, unavailable = ?, server_type = ?,
            updated_at = datetime('now')
          WHERE id = ?`
       )
@@ -219,6 +220,7 @@ async function handleApi(request, env, url) {
           optStr(security_password),
           max_streams != null && max_streams !== "" ? Number(max_streams) : null,
           optStr(recommended_node),
+          optStr(unavailable),
           normType(server_type),
           id
         )

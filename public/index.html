@@ -175,6 +175,8 @@
   }
   .card-cond b { color: var(--text); font-weight: 600; }
   .card-cond b.streams-num { color: #e11d48; }
+  .card-cond.card-unavailable { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); }
+  .card-cond.card-unavailable b { color: #dc2626; }
 
   .card-row {
     display: flex; align-items: center; gap: 8px;
@@ -686,6 +688,11 @@
       </div>
 
       <div class="field">
+        <label>不可用</label>
+        <input type="text" id="f-unavailable" placeholder="填写播放器名称">
+      </div>
+
+      <div class="field">
         <label>服务器类型</label>
         <div class="seg" id="seg-type">
           <div class="seg-opt" data-type="emby">Emby</div>
@@ -909,6 +916,13 @@ function streamNodeText(s) {
   if (streams != null) parts.push(`同时播放 <b class="streams-num">${escapeHtml(streams)}</b>`);
   if (node) parts.push(`推荐节点 <b>${escapeHtml(node)}</b>`);
   return `<div class="card-cond">${parts.join(" · ")}</div>`;
+}
+
+// 不可用（播放器名称）
+function unavailableText(s) {
+  const v = s.unavailable != null ? String(s.unavailable).trim() : "";
+  if (!v) return "";
+  return `<div class="card-cond card-unavailable">不可用 <b>${escapeHtml(v)}</b></div>`;
 }
 
 // 构建 Senplayer 导入链接
@@ -1157,6 +1171,7 @@ function render() {
         </div>
         <div class="card-cond">${condText(s)}</div>
         ${streamNodeText(s)}
+        ${unavailableText(s)}
         ${credRow("线路", s.line)}
         ${backupRows}
         ${credRow("用户名", s.username)}
@@ -1206,6 +1221,7 @@ function openModal(server) {
     $("#f-security-password").value = server.security_password ?? "";
     $("#f-max-streams").value = server.max_streams ?? "";
     $("#f-recommended-node").value = server.recommended_node ?? "";
+    $("#f-unavailable").value = server.unavailable ?? "";
   } else {
     $("#f-watch").value = "";
     $("#f-both").value = "";
@@ -1216,6 +1232,7 @@ function openModal(server) {
     $("#f-security-password").value = "";
     $("#f-max-streams").value = "";
     $("#f-recommended-node").value = "";
+    $("#f-unavailable").value = "";
   }
   setIcon(server && server.icon ? server.icon : null);
   overlay.classList.add("open");
@@ -1289,6 +1306,7 @@ async function save(e) {
   }
 
   const recommendedNode = $("#f-recommended-node").value.trim();
+  const unavailable = $("#f-unavailable").value.trim();
 
   const payload = {
     name,
@@ -1301,6 +1319,7 @@ async function save(e) {
     security_password: securityPassword,
     max_streams: maxStreams,
     recommended_node: recommendedNode,
+    unavailable: unavailable,
     server_type: currentType,
   };
   if (currentMode === "watch") {
@@ -1609,7 +1628,7 @@ filterBar.addEventListener("click", (e) => {
 let recognizedData = null; // { line, backup_lines, username, password, keep_mode, days }
 
 function parseServerInfo(text) {
-  const result = { line: "", backup_lines: [], username: "", password: "", security_password: "", max_streams: "", recommended_node: "", keep_mode: "watch", days: 7, warnings: [] };
+  const result = { line: "", backup_lines: [], username: "", password: "", security_password: "", max_streams: "", recommended_node: "", unavailable: "", keep_mode: "watch", days: 7, warnings: [] };
   const lines = text.split(/\r?\n/).map((l) => l.trim());
 
   let port = "";
@@ -1635,6 +1654,10 @@ function parseServerInfo(text) {
     // 推荐播放节点（国家/地区缩写，如 US、JP）
     m = line.match(/(?:推荐播放节点|推荐节点|推荐线路|播放节点|推荐地区|推荐区域)\s*[:：|｜]\s*(.+)/i);
     if (m && !result.recommended_node) result.recommended_node = m[1].trim();
+
+    // 不可用（播放器名称）
+    m = line.match(/(?:不可用|不可用播放器|不可用客户端)\s*[:：|｜]\s*(.+)/i);
+    if (m && !result.unavailable) result.unavailable = m[1].trim();
 
     // 端口（单独一行「端口：443」的情况）
     m = line.match(/(?:端口|port)\s*[:：|｜]\s*(\d+)/i);
@@ -1744,6 +1767,7 @@ function doRecognize() {
     <div class="rz-row"><span class="rz-label">安全密码</span><span class="rz-val ${r.security_password ? "" : "empty"}">${r.security_password ? escapeHtml(r.security_password) : "未识别"}</span></div>
     <div class="rz-row"><span class="rz-label">同时播放数</span><span class="rz-val ${r.max_streams ? "" : "empty"}">${r.max_streams ? escapeHtml(r.max_streams) : "未识别"}</span></div>
     <div class="rz-row"><span class="rz-label">推荐播放节点</span><span class="rz-val ${r.recommended_node ? "" : "empty"}">${r.recommended_node ? escapeHtml(r.recommended_node) : "未识别"}</span></div>
+    <div class="rz-row"><span class="rz-label">不可用</span><span class="rz-val ${r.unavailable ? "" : "empty"}">${r.unavailable ? escapeHtml(r.unavailable) : "未识别"}</span></div>
     <div class="rz-row"><span class="rz-label">保号条件</span><span class="rz-val">${modeLabel}${daysText ? " · " + daysText : ""}</span></div>
     ${r.warnings.length ? `<div class="rz-warn">⚠ ${r.warnings.join("；")}</div>` : ""}
   `;
@@ -1760,6 +1784,7 @@ function applyRecognized() {
   $("#f-security-password").value = r.security_password;
   $("#f-max-streams").value = r.max_streams;
   $("#f-recommended-node").value = r.recommended_node;
+  $("#f-unavailable").value = r.unavailable;
   setMode(r.keep_mode);
   if (r.keep_mode === "watch") $("#f-watch").value = r.days;
   if (r.keep_mode === "both") $("#f-both").value = r.days;
