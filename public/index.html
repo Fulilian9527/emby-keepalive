@@ -877,6 +877,17 @@ function condText(s) {
   return "";
 }
 
+// 同时播放数 + 推荐播放节点（卡片中类似保号条件的展示）
+function streamNodeText(s) {
+  const streams = s.max_streams != null && String(s.max_streams).trim() !== "" ? s.max_streams : null;
+  const node = s.recommended_node != null && String(s.recommended_node).trim() !== "" ? s.recommended_node : null;
+  if (streams == null && !node) return "";
+  const parts = [];
+  if (streams != null) parts.push(`同时播放 <b>${escapeHtml(streams)}</b>`);
+  if (node) parts.push(`推荐节点 <b>${escapeHtml(node)}</b>`);
+  return `<div class="card-cond">${parts.join(" · ")}</div>`;
+}
+
 // 构建 Senplayer 导入链接
 function senplayerUrl(s) {
   const type = (s.server_type || "emby").toLowerCase();
@@ -1070,18 +1081,6 @@ function credRow(label, value) {
     </div>`;
 }
 
-// 普通行（非敏感信息，直接显示，可复制）
-function plainRow(label, value) {
-  const has = value != null && String(value).trim() !== "";
-  const val = has ? String(value) : "—";
-  return `
-    <div class="card-row" data-row="${label}">
-      <span class="row-label">${label}</span>
-      <span class="row-val" data-val="${escapeHtml(val)}">${escapeHtml(val)}</span>
-      ${has ? `<button class="row-copy" data-copy="${label}" title="复制">复制</button>` : ""}
-    </div>`;
-}
-
 function render() {
   const q = searchQuery.trim().toLowerCase();
   const filtered = q ? servers.filter((s) => (s.name || "").toLowerCase().includes(q)) : servers;
@@ -1124,8 +1123,7 @@ function render() {
         ${credRow("用户名", s.username)}
         ${credRow("密码", s.password)}
         ${credRow("安全密码", s.security_password)}
-        ${plainRow("同时播放数", s.max_streams)}
-        ${plainRow("推荐播放节点", s.recommended_node)}
+        ${streamNodeText(s)}
         <a class="card-senplayer" href="${escapeHtml(senplayerUrl(s))}" title="在 Senplayer 中打开">
           ${SENPLAYER_ICON_SVG}
           <span>Senplayer</span>
@@ -1256,7 +1254,6 @@ async function save(e) {
   if (!name) { showToast("请填写服务器名称"); return; }
 
   const securityPassword = $("#f-security-password").value.trim();
-  if (!securityPassword) { showToast("请填写安全密码"); return; }
 
   const maxStreamsRaw = $("#f-max-streams").value.trim();
   if (!maxStreamsRaw) { showToast("请填写同时播放数"); return; }
