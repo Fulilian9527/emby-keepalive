@@ -2,8 +2,18 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Emby 保号管理</title>
+<meta name="description" content="管理你的 Emby 服务器保号任务">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Emby保号">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-startup-image" href="icon-512.png">
 <style>
   :root {
     --bg: #f8fafc;
@@ -474,6 +484,35 @@
     header { flex-direction: column; align-items: flex-start; gap: 16px; }
     .grid { grid-template-columns: 1fr; }
   }
+
+  /* 平板适配：768px - 1024px */
+  @media (min-width: 561px) and (max-width: 1024px) {
+    .wrap { max-width: 100%; padding: 32px 28px 80px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .card { padding: 22px; }
+    .brand h1 { font-size: 24px; }
+    .brand .logo { width: 48px; height: 48px; }
+    .modal { max-width: 520px; }
+    .icon-picker { max-width: 640px; }
+  }
+
+  /* 大屏平板 / 横屏 */
+  @media (min-width: 1025px) and (max-width: 1280px) {
+    .wrap { max-width: 100%; padding: 40px 40px 80px; }
+    .grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* 安全区适配（刘海屏 / iPad 圆角） */
+  @supports (padding: max(0px)) {
+    .wrap {
+      padding-left: max(24px, env(safe-area-inset-left));
+      padding-right: max(24px, env(safe-area-inset-right));
+      padding-bottom: max(80px, env(safe-area-inset-bottom));
+    }
+    .toast {
+      bottom: max(30px, env(safe-area-inset-bottom));
+    }
+  }
 </style>
 </head>
 <body>
@@ -713,10 +752,7 @@ const overlay = $("#overlay");
 const form = $("#form");
 const toast = $("#toast");
 
-const DEFAULT_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none">
-  <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z" fill="#ffffff"/>
-  <path d="M8 8.5l5 3.5-5 3.5v-7Z" fill="#ffffff"/>
-</svg>`;
+const DEFAULT_ICON_SVG = `<img src="emby.png" alt="Emby" style="width:100%;height:100%;object-fit:contain;">`;
 
 const MODE_META = {
   watch:   { badge: "badge-watch",   label: "观看保号" },
@@ -964,7 +1000,7 @@ function render() {
     return `
       <div class="card" data-id="${s.id}">
         <div class="card-top">
-          <div class="card-icon${s.icon && s.icon.url ? " has-icon" : ""}">${iconHtml(s.icon)}</div>
+          <div class="card-icon has-icon">${iconHtml(s.icon)}</div>
           <div>
             <div class="card-name">${escapeHtml(s.name)}</div>
             <div class="sub"><span class="badge ${meta.badge}">${meta.label}</span></div>
@@ -1481,6 +1517,13 @@ grid.addEventListener("click", (e) => {
 });
 
 load();
+
+// 注册 Service Worker（PWA 离线缓存）
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
