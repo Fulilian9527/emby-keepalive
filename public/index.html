@@ -157,6 +157,7 @@
     line-height: 1.5;
   }
   .card-cond b { color: var(--text); font-weight: 600; }
+  .card-cond b.streams-num { color: #e11d48; }
 
   .card-row {
     display: flex; align-items: center; gap: 8px;
@@ -883,7 +884,7 @@ function streamNodeText(s) {
   const node = s.recommended_node != null && String(s.recommended_node).trim() !== "" ? s.recommended_node : null;
   if (streams == null && !node) return "";
   const parts = [];
-  if (streams != null) parts.push(`同时播放 <b>${escapeHtml(streams)}</b>`);
+  if (streams != null) parts.push(`同时播放 <b class="streams-num">${escapeHtml(streams)}</b>`);
   if (node) parts.push(`推荐节点 <b>${escapeHtml(node)}</b>`);
   return `<div class="card-cond">${parts.join(" · ")}</div>`;
 }
