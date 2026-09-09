@@ -119,6 +119,23 @@
   }
   .search-clear:hover { color: var(--text); }
 
+  .filter-bar {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .filter-chip {
+    cursor: pointer; user-select: none;
+    font-size: 13px; padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card); color: var(--text-dim);
+    transition: all .15s ease;
+  }
+  .filter-chip:hover { border-color: #d1d5db; color: var(--text); }
+  .filter-chip.active {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+
   .card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -595,6 +612,8 @@
     <button class="search-clear" id="search-clear" style="display:none" title="清空">×</button>
   </div>
 
+  <div class="filter-bar" id="filter-bar"></div>
+
   <div class="grid" id="grid"></div>
 
   <div class="empty" id="empty" style="display:none">
@@ -788,6 +807,7 @@ let currentIcon = null; // { name, url } 或 null 表示默认
 let currentType = "emby";
 let currentBackupLines = [];
 let searchQuery = "";
+let filterMode = ""; // 当前标签筛选的保号方式，空 = 全部
 
 // —— 管理口令（API 鉴权）——
 const TOKEN_KEY = "emby_keepalive_token";
@@ -834,6 +854,7 @@ const empty = $("#empty");
 const emptySearch = $("#empty-search");
 const searchInput = $("#search-input");
 const searchClear = $("#search-clear");
+const filterBar = $("#filter-bar");
 const overlay = $("#overlay");
 const form = $("#form");
 const toast = $("#toast");
@@ -1082,9 +1103,24 @@ function credRow(label, value) {
     </div>`;
 }
 
+// 渲染标签筛选栏（保号条件）
+function renderFilterBar() {
+  const modes = ["watch", "checkin", "both", "none", "white", "expiry"];
+  const chips = modes.map((m) => {
+    const meta = MODE_META[m];
+    const active = filterMode === m;
+    return `<span class="filter-chip ${active ? "active" : ""}" data-mode="${m}">${meta.label}</span>`;
+  }).join("");
+  filterBar.innerHTML = `<span class="filter-chip ${filterMode === "" ? "active" : ""}" data-mode="">全部</span>${chips}`;
+}
+
 function render() {
   const q = searchQuery.trim().toLowerCase();
-  const filtered = q ? servers.filter((s) => (s.name || "").toLowerCase().includes(q)) : servers;
+  let filtered = servers;
+  if (filterMode) filtered = filtered.filter((s) => s.keep_mode === filterMode);
+  if (q) filtered = filtered.filter((s) => (s.name || "").toLowerCase().includes(q));
+
+  renderFilterBar();
 
   if (servers.length === 0) {
     grid.innerHTML = "";
@@ -1159,6 +1195,7 @@ async function load() {
     servers = await res.json();
     render();
   } catch (e) {
+    renderFilterBar();
     showToast("加载失败，请检查网络");
   }
 }
@@ -1570,6 +1607,14 @@ searchClear.addEventListener("click", () => {
   searchClear.style.display = "none";
   render();
   searchInput.focus();
+});
+
+// 标签筛选（保号条件）
+filterBar.addEventListener("click", (e) => {
+  const chip = e.target.closest(".filter-chip");
+  if (!chip) return;
+  filterMode = chip.dataset.mode || "";
+  render();
 });
 
 // ===== 识别服务器信息 =====
