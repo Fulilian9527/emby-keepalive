@@ -1,0 +1,20 @@
+-- Emby 保号管理数据库
+-- 卡片表：每个 Emby 服务器账号一条记录
+
+CREATE TABLE IF NOT EXISTS servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,                 -- Emby 服务器名称
+  keep_mode TEXT NOT NULL,            -- watch / checkin / both
+  watch_days INTEGER,                 -- 观看保号：多少天观看一次
+  both_days INTEGER,                  -- 观看+签到：天数
+  icon TEXT,                          -- 图标 JSON: {"name":"...","url":"..."}
+  line TEXT,                          -- 线路（服务器地址/URL）
+  backup_lines TEXT,                  -- 备用线路 JSON 数组: ["https://...","https://..."]
+  username TEXT,                      -- 用户名
+  password TEXT,                      -- 密码
+  server_type TEXT NOT NULL DEFAULT 'emby',  -- webdav/smb/ftp/emby/jelly
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_servers_created ON servers(created_at DESC);
