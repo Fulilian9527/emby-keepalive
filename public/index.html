@@ -880,7 +880,7 @@ const MODE_META = {
 
 const SENPLAYER_ICON_SVG = `<img src="senplayer.png" alt="Senplayer" class="senplayer-logo">`;
 const EPLAYERX_ICON_SVG = `<img src="eplayerx.png" alt="ePlayerX" class="senplayer-logo">`;
-const FORWARD_ICON_SVG = `<img src="forward.png" alt="Forward" class="senplayer-logo">`;
+const REX_ICON_SVG = `<img src="rex.png" alt="Rex" class="senplayer-logo">`;
 const HILLS_ICON_SVG = `<img src="hills.png" alt="Hills" class="senplayer-logo">`;
 const RODELPLAYER_ICON_SVG = `<img src="rodelplayer.png" alt="小幻" class="senplayer-logo">`;
 
@@ -971,8 +971,8 @@ function eplayerxUrl(s) {
   return `eplayerx://add-or-update?${params.toString()}`;
 }
 
-// 构建 Forward 导入链接
-function forwardUrl(s) {
+// 构建 Rex 导入链接
+function rexUrl(s) {
   const type = (s.server_type || "emby").toLowerCase();
   const params = new URLSearchParams();
   params.set("type", type);
@@ -984,7 +984,7 @@ function forwardUrl(s) {
   params.set("host", host);
   if (s.username) params.set("username", s.username);
   if (s.password) params.set("password", s.password);
-  params.set("title", s.name || "");
+  params.set("title", "主线路");
   // 备用线路：line1/line1title, line2/line2title ...
   const backups = Array.isArray(s.backup_lines) ? s.backup_lines : [];
   backups.forEach((b, i) => {
@@ -996,7 +996,7 @@ function forwardUrl(s) {
       params.set(`line${n}title`, name);
     }
   });
-  return `forward://import?${params.toString()}`;
+  return `rex://import?${params.toString()}`;
 }
 
 // 构建 Hills 导入链接
@@ -1180,7 +1180,7 @@ function render() {
         <div class="card-imports">
           <a class="card-import" href="${escapeHtml(senplayerUrl(s))}" title="导入 Senplayer">${SENPLAYER_ICON_SVG}</a>
           <a class="card-import" href="${escapeHtml(eplayerxUrl(s))}" title="导入 ePlayerX">${EPLAYERX_ICON_SVG}</a>
-          <a class="card-import" href="${escapeHtml(forwardUrl(s))}" title="导入 Forward">${FORWARD_ICON_SVG}</a>
+          <a class="card-import" href="${escapeHtml(rexUrl(s))}" title="导入 Rex">${REX_ICON_SVG}</a>
           <a class="card-import" href="${escapeHtml(hillsUrl(s))}" title="导入 Hills">${HILLS_ICON_SVG}</a>
           <a class="card-import" href="${escapeHtml(rodelplayerUrl(s))}" title="导入小幻">${RODELPLAYER_ICON_SVG}</a>
         </div>
