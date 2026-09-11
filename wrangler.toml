@@ -9,4 +9,4 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "emby-keepalive"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "ee121f46-9432-4a6f-87b3-68c406c318c7"
