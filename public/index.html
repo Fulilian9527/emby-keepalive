@@ -976,12 +976,14 @@ function rexUrl(s) {
   const type = (s.server_type || "emby").toLowerCase();
   const params = new URLSearchParams();
   params.set("type", type);
-  // 主线路拆成 scheme + host
-  const m = (s.line || "").match(/^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/(.+)$/);
+  // 主线路拆成 scheme + host + port（port 为主线路端口）
+  const m = (s.line || "").match(/^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^\/:]+)(?::(\d+))?(?:\/.*)?$/);
   const scheme = m ? m[1] : "https";
   const host = m ? m[2] : (s.line || "");
+  const port = m && m[3] ? m[3] : (scheme === "http" ? "80" : "443");
   params.set("scheme", scheme);
   params.set("host", host);
+  params.set("port", port);
   if (s.username) params.set("username", s.username);
   if (s.password) params.set("password", s.password);
   params.set("title", "主线路");
@@ -993,7 +995,7 @@ function rexUrl(s) {
     const name = (b && typeof b === "object" && b.name) ? b.name : "";
     if (addr) {
       params.set(`line${n}`, addr);
-      params.set(`line${n}title`, name);
+      params.set(`line${n}title`, name || `线路${n}`);
     }
   });
   return `rex://import?${params.toString()}`;
